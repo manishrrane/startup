@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Full Harmonium Simulator</title>
+  <style>
+    body {
+      background: #3392ac;
+      font-family: Arial, sans-serif;
+      color: #fff;
+      padding: 20px;
+    }
+
+    h1 {
+      color: #ffc107;
+      margin-bottom: 20px;
+    }
+
+    .harmonium {
+      display: flex;
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      background: #3e2723;
+      border-radius: 10px;
+      padding: 10px;
+      justify-content: flex-start;
+    }
+
+    .key {
+      position: relative;
+      width: 60px;
+      height: 250px;
+      margin: 1px;
+      background: white;
+      border: 1px solid #999;
+      border-radius: 4px;
+      box-shadow: 0 4px 8px #0005;
+      z-index: 1;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .key-label {
+      margin-bottom: 10px;
+      color: #000;
+    }
+
+    .key.black {
+      background: black;
+      width: 40px;
+      height: 160px;
+      position: absolute;
+      top: 0;
+      left: 45px;
+      z-index: 2;
+      color: #fff;
+    }
+
+    .key.playing {
+      background-color: #8bc34a !important;
+      color: #000 !important;
+    }
+
+    .white-wrapper {
+      position: relative;
+    }
+
+    footer {
+      margin-top: 20px;
+      font-size: 14px;
+      color: #ccc;
+    }
+  </style>
+</head>
+<body>
+  <h1>🎼 Full Harmonium Simulator (3 Octaves)</h1>
+  <div class="harmonium" id="harmonium"></div>
+  <footer>Click on keys to play. Supports Sa to high Sa (3 octaves)</footer>
+
+  <script>
+    const notes = [
+      // Octave 1 (Mandra)
+      { label: 'Sa (C2)', freq: 65.41 }, { black: 'Re♭', freq: 69.30 },
+      { label: 'Re (D2)', freq: 73.42 }, { black: 'Ga♭', freq: 77.78 },
+      { label: 'Ga (E2)', freq: 82.41 },
+      { label: 'Ma (F2)', freq: 87.31 }, { black: 'Ma♯', freq: 92.50 },
+      { label: 'Pa (G2)', freq: 98.00 }, { black: 'Dha♭', freq: 103.83 },
+      { label: 'Dha (A2)', freq: 110.00 }, { black: 'Ni♭', freq: 116.54 },
+      { label: 'Ni (B2)', freq: 123.47 },
+
+      // Octave 2 (Madhya)
+      { label: 'Sa (C3)', freq: 130.81 }, { black: 'Re♭', freq: 138.59 },
+      { label: 'Re (D3)', freq: 146.83 }, { black: 'Ga♭', freq: 155.56 },
+      { label: 'Ga (E3)', freq: 164.81 },
+      { label: 'Ma (F3)', freq: 174.61 }, { black: 'Ma♯', freq: 185.00 },
+      { label: 'Pa (G3)', freq: 196.00 }, { black: 'Dha♭', freq: 207.65 },
+      { label: 'Dha (A3)', freq: 220.00 }, { black: 'Ni♭', freq: 233.08 },
+      { label: 'Ni (B3)', freq: 246.94 },
+
+      // Octave 3 (Taar)
+      { label: 'Sa (C4)', freq: 261.63 }, { black: 'Re♭', freq: 277.18 },
+      { label: 'Re (D4)', freq: 293.66 }, { black: 'Ga♭', freq: 311.13 },
+      { label: 'Ga (E4)', freq: 329.63 },
+      { label: 'Ma (F4)', freq: 349.23 }, { black: 'Ma♯', freq: 369.99 },
+      { label: 'Pa (G4)', freq: 392.00 }, { black: 'Dha♭', freq: 415.30 },
+      { label: 'Dha (A4)', freq: 440.00 }, { black: 'Ni♭', freq: 466.16 },
+      { label: 'Ni (B4)', freq: 493.88 },
+
+      { label: "Sa' (C5)", freq: 523.25 }
+    ];
+
+    const harmonium = document.getElementById('harmonium');
+
+    for (let i = 0; i < notes.length; i++) {
+      const note = notes[i];
+      if (!note.black) {
+        const wrapper = document.createElement('div');
+        wrapper.classList.add('white-wrapper');
+
+        const white = document.createElement('div');
+        white.classList.add('key');
+        white.dataset.freq = note.freq;
+        white.innerHTML = `<div class="key-label">${note.label}</div>`;
+        wrapper.appendChild(white);
+
+        if (notes[i + 1] && notes[i + 1].black) {
+          const black = document.createElement('div');
+          black.classList.add('key', 'black');
+          black.dataset.freq = notes[i + 1].freq;
+          black.innerHTML = `<div class="key-label">${notes[i + 1].black}</div>`;
+          wrapper.appendChild(black);
+          i++; // skip next since added here
+        }
+
+        harmonium.appendChild(wrapper);
+      }
+    }
+
+    function playTone(freq) {
+      const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const oscillator = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+
+      oscillator.type = "sine";
+      oscillator.frequency.value = freq;
+      oscillator.connect(gain);
+      gain.connect(audioCtx.destination);
+
+      oscillator.start();
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 1);
+      oscillator.stop(audioCtx.currentTime + 1);
+    }
+
+    document.querySelectorAll('.key').forEach(key => {
+      key.addEventListener('click', () => {
+        const freq = parseFloat(key.dataset.freq);
+        playTone(freq);
+        key.classList.add('playing');
+        setTimeout(() => key.classList.remove('playing'), 200);
+      });
+    });
+  </script>
+  <p>When learning and playing the harmonium, understanding the fundamental notes and their corresponding keys on the keyboard is crucial. The harmonium keyboard uses the same system as a piano, with white and black keys representing different notes. The Indian classical music scale uses the "Sargam" system (Sa, Re, Ga, Ma, Pa, Dha, Ni, Sa), which has Western equivalents (C, D, E, F, G, A, B, C). </p>
+  <ol>
+    <li> Identifying the Notes:
+      <ul><li>Sa (S): This is the tonic or root note, the first note in the scale, often corresponding to C in Western music. </li>
+      <li>Re (R), Ga (G), Ma (m), Pa (P), Dha (D), Ni (N): These notes follow Sa in the Sargam scale, and each has a corresponding white key on the keyboard. </li>
+      <li>Shuddha Swaras: The white keys represent the natural notes or shuddha swaras.</li></ul>
+    </li>
+  
+  <li>The Keyboard Layout:</li>
+  <ul><li>The harmonium keyboard has white and black keys, similar to a piano. </li>
+  <li>The white keys represent the natural notes (Sa, Re, Ga, Ma, Pa, Dha, Ni, Sa).</li>
+<li>The black keys are sharp or flat notes, and can be used to create different scales and musical phrases. </li></ul>
+<li>Understanding the Sargam System: </li>
+<ul><li>The Sargam system is the foundation of Indian classical music.</li>
+<li>Understanding the relationship between Sa, Re, Ga, Ma, Pa, Dha, and Ni is crucial for playing Indian classical melodies.</li>
+<li>The Sargam scale is a sequence of notes that forms the basis for many Indian classical ragas (melodies).</li></ul>
+<li>Playing Harmonium:</li>
+<ul><li>Practice Finger Placement:
+Familiarize yourself with the notes and their location on the keyboard by practicing finger placement.</li> 
+<li>Mastering Scales:
+Learn different scales and how to play them on the harmonium, using the Sargam system as a guide. 
+</li>
+<li>Pumping the Bellows:
+The bellows are essential for creating sound on the harmonium. Practice coordinating pumping with playing the notes. </li></ul>
+<li>Additional Tips:</li>
+<ul><li>Start with the Basics: Focus on identifying the notes, playing simple scales, and understanding the fundamentals of the instrument. </li>
+<li>Practice Regularly: Consistent practice will improve your playing skills and musicality. </li>
+<li>Listen to Music: Listen to Indian classical music to familiarize yourself with the ragas and melodic structures. </li></ul>
+<li>Scales:</li>
+<ul><li>Explore different scales and modes once you have a good understanding of the basic notes and scales. 
+</li></ul>
+<li>Chords:</li>
+<ul><li>Learn how to form and play different chords, which will allow you to accompany melodies and create harmonies. </li></ul>
+<li>Harmonies:</li>
+<ul><li>Experiment with different harmonies and chord progressions to create richer and more complex musical textures. </li></ul>
+</ol>
+</body>
+</html>
